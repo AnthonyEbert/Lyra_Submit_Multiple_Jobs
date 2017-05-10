@@ -1,6 +1,6 @@
 #!/bin/bash
 
-usage_str="Usage: $(basename $0) [-h] [-v] [-s submission_script.sub] rscript.R parameter_file.csv"
+usage_str="Usage: $(basename $0) [-h] [-v] [-arch] [-s submission_script.sub] rscript.R parameter_file.csv"
 
 verbose=0
 
@@ -14,6 +14,8 @@ while getopts hvs: opt; do
             exit 0
             ;;
         v) verbose=1
+            ;;
+        arch) arch=1
             ;;
         s) subfile="$OPTARG"
             ;;
@@ -69,28 +71,51 @@ else
     echo "submitting $numjobs jobs to the cluster"
 fi
 
-# submit the jobs - note any errors in csv will be picked up by PBS
-for (( i = 0;  i < $numjobs; i++ )); do
-    # note we trim leading and trailing spaces with xargs
-    name=$(echo ${jobnames[$i]} | xargs)
-    walltime=$(echo ${jobwalltimes[$i]} | xargs)
-    ncpus=$(echo ${jobcpus[$i]} | xargs)
-    mem=$(echo ${jobmems[$i]} | xargs)
+if[ $arch -eq 0 ]; then
+    # submit the jobs - note any errors in csv will be picked up by PBS
+    for (( i = 0;  i < $numjobs; i++ )); do
+        # note we trim leading and trailing spaces with xargs
+        name=$(echo ${jobnames[$i]} | xargs)
+        walltime=$(echo ${jobwalltimes[$i]} | xargs)
+        ncpus=$(echo ${jobcpus[$i]} | xargs)
+        mem=$(echo ${jobmems[$i]} | xargs)
 
-    # R params need csv delim replaced with a space
-    rargs="${jobrparams[$i]//,/ }"
-    # then strip trailing spaces
-    rargs=$(echo $rargs | xargs)
-    # create R script submission string
-    scriptstr="scriptFile=$rscript,argString=--args"
-    [ -n "$rargs" ] && scriptstr="$scriptstr $rargs"
+        # R params need csv delim replaced with a space
+        rargs="${jobrparams[$i]//,/ }"
+        # then strip trailing spaces
+        rargs=$(echo $rargs | xargs)
+        # create R script submission string
+        scriptstr="scriptFile=$rscript,argString=--args"
+        [ -n "$rargs" ] && scriptstr="$scriptstr $rargs"
 
-    if [ $verbose -eq 1 ]; then
-        echo -n "submitting job $((i+1)) with: "
-        echo qsub -v \"MC_CORES=$ncpus, $scriptstr\" -N $name -l walltime=$walltime -l select=1:ncpus=$ncpus:mem=$mem $subfile
-    fi
-    qsub -v "MC_CORES=$ncpus, $scriptstr" -N $name -l walltime=$walltime -l select=1:ncpus=$ncpus:mem=$mem $subfile
-done
+        if [ $verbose -eq 1 ]; then
+            echo -n "submitting job $((i+1)) with: "
+            echo qsub -v \"MC_CORES=$ncpus, $scriptstr\" -N $name -l walltime=$walltime -l select=1:ncpus=$ncpus:mem=$mem $subfile
+        fi
+        qsub -v "MC_CORES=$ncpus, $scriptstr" -N $name -l walltime=$walltime -l select=1:ncpus=$ncpus:mem=$mem $subfile
+    done
+fi
+    for (( i = 0;  i < $numjobs; i++ )); do
+        # note we trim leading and trailing spaces with xargs
+        name=$(echo ${jobnames[$i]} | xargs)
+        walltime=$(echo ${jobwalltimes[$i]} | xargs)
+        ncpus=$(echo ${jobcpus[$i]} | xargs)
+        mem=$(echo ${jobmems[$i]} | xargs)
+
+        # R params need csv delim replaced with a space
+        rargs="${jobrparams[$i]//,/ }"
+        # then strip trailing spaces
+        rargs=$(echo $rargs | xargs)
+        # create R script submission string
+        scriptstr="scriptFile=$rscript,argString=--args"
+        [ -n "$rargs" ] && scriptstr="$scriptstr $rargs"
+
+        if [ $verbose -eq 1 ]; then
+            echo -n "submitting job $((i+1)) with: "
+            echo qsub -v \"MC_CORES=$ncpus, $scriptstr\" -N $name -l cputype=avx2 -l walltime=$walltime -l select=1:ncpus=$ncpus:mem=$mem $subfile
+        fi
+        qsub -v "MC_CORES=$ncpus, $scriptstr" -N $name -l cputype=avx2 -l walltime=$walltime -l select=1:ncpus=$ncpus:mem=$mem $subfile
+    done
 
 # display jobs
 if [ $verbose -eq 1 ]; then
