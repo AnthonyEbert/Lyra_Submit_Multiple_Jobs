@@ -71,7 +71,7 @@ else
     echo "submitting $numjobs jobs to the cluster"
 fi
 
-if[ $arch -eq 0 ]; then
+if [ $arch -eq 0 ]; then
     # submit the jobs - note any errors in csv will be picked up by PBS
     for (( i = 0;  i < $numjobs; i++ )); do
         # note we trim leading and trailing spaces with xargs
@@ -94,7 +94,7 @@ if[ $arch -eq 0 ]; then
         fi
         qsub -v "MC_CORES=$ncpus, $scriptstr" -N $name -l walltime=$walltime -l select=1:ncpus=$ncpus:mem=$mem $subfile
     done
-fi
+else
     for (( i = 0;  i < $numjobs; i++ )); do
         # note we trim leading and trailing spaces with xargs
         name=$(echo ${jobnames[$i]} | xargs)
@@ -116,6 +116,7 @@ fi
         fi
         qsub -v "MC_CORES=$ncpus, $scriptstr" -N $name -l cputype=avx2 -l walltime=$walltime -l select=1:ncpus=$ncpus:mem=$mem $subfile
     done
+fi
 
 # display jobs
 if [ $verbose -eq 1 ]; then
